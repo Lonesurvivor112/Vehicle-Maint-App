@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py --version)",
+      "Bash(npx --version)",
+      "Bash(php --version)"
+    ]
+  }
+}

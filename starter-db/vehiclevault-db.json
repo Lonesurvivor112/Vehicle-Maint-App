@@ -1,0 +1,56 @@
+{
+  "app": "VehicleVault",
+  "schemaVersion": 1,
+  "updatedAt": "2026-07-24T00:00:00.000Z",
+  "vehicles": [
+    {
+      "id": "veh_example_001",
+      "name": "Daily Driver",
+      "year": "2020",
+      "make": "Ford",
+      "model": "Escape",
+      "trim": "SE",
+      "vin": "",
+      "plate": "",
+      "color": "Blue",
+      "currentMileage": 58250,
+      "purchaseDate": "",
+      "notes": "Example vehicle. Edit or delete this record.",
+      "createdAt": "2026-07-24T00:00:00.000Z"
+    }
+  ],
+  "maintenance": [
+    {
+      "id": "mnt_example_001",
+      "vehicleId": "veh_example_001",
+      "date": "2026-07-24",
+      "mileage": 58250,
+      "category": "Oil Change",
+      "title": "Synthetic oil and filter",
+      "provider": "Self / Local Shop",
+      "cost": 64.99,
+      "notes": "Example maintenance entry.",
+      "nextDueMileage": 63250,
+      "nextDueDate": "",
+      "documentIds": [],
+      "createdAt": "2026-07-24T00:00:00.000Z"
+    }
+  ],
+  "expenses": [],
+  "documents": [],
+  "reminders": [
+    {
+      "id": "rem_example_001",
+      "vehicleId": "veh_example_001",
+      "title": "Next oil change",
+      "type": "Mileage",
+      "dueMileage": 63250,
+      "dueDate": "",
+      "repeatMiles": 5000,
+      "repeatMonths": "",
+      "status": "Open",
+      "notes": "Starter reminder.",
+      "createdAt": "2026-07-24T00:00:00.000Z"
+    }
+  ]
+}
