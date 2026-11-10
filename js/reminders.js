@@ -28,10 +28,30 @@ function addReminder(event) {
   commit({ ...state.db, reminders: [...state.db.reminders, entry] });
 }
 
+/* Marking a repeating reminder Done schedules the next one automatically. */
+function toggleReminder(id, vehicle) {
+  const r = state.db.reminders.find(x => x.id === id);
+  if (!r) return;
+  const reminders = state.db.reminders.map(x => x.id === id ? { ...x, status: x.status === "Done" ? "Open" : "Done" } : x);
+  const miles = Number(r.repeatMiles || 0);
+  const months = Number(r.repeatMonths || 0);
+  if (r.status !== "Done" && (miles > 0 || months > 0)) {
+    const fromMiles = Math.max(Number(vehicle?.currentMileage || 0), Number(r.dueMileage || 0));
+    let dueDate = "";
+    if (months > 0) {
+      const d = new Date();
+      d.setMonth(d.getMonth() + months);
+      dueDate = d.toISOString().slice(0, 10);
+    }
+    reminders.push({ ...r, id: uid("rem"), status: "Open", dueMileage: miles > 0 ? fromMiles + miles : "", dueDate, type: miles > 0 && months > 0 ? "Both" : miles > 0 ? "Mileage" : "Date", createdAt: new Date().toISOString() });
+  }
+  commit({ ...state.db, reminders });
+}
+
 function renderList(root, reminders, vehicle) {
   const list = root.querySelector("#reminderList");
   if (!reminders.length) { list.innerHTML = `<div class="empty-state">No reminders yet.</div>`; return; }
   list.innerHTML = reminders.map(r => { const s = reminderStatus(r, vehicle); return `<div class="record"><div class="record-head"><div><h4>${escapeHtml(r.title)}</h4><p class="muted small">${escapeHtml(r.type)} · ${r.dueMileage ? Number(r.dueMileage).toLocaleString() + " miles" : ""} ${r.dueDate ? " · " + dateLabel(r.dueDate) : ""}</p><p class="small">${escapeHtml(r.notes || "")}</p></div><div><span class="badge ${s.css}">${s.label}</span><div class="actions" style="margin-top:8px"><button class="btn success" data-toggle="${r.id}">${r.status === "Done" ? "Reopen" : "Done"}</button><button class="btn danger" data-delete="${r.id}">Delete</button></div></div></div></div>`; }).join("");
-  list.querySelectorAll("[data-toggle]").forEach(btn => btn.addEventListener("click", () => commit({ ...state.db, reminders: state.db.reminders.map(r => r.id === btn.dataset.toggle ? { ...r, status: r.status === "Done" ? "Open" : "Done" } : r) })));
+  list.querySelectorAll("[data-toggle]").forEach(btn => btn.addEventListener("click", () => toggleReminder(btn.dataset.toggle, vehicle)));
   list.querySelectorAll("[data-delete]").forEach(btn => btn.addEventListener("click", () => commit({ ...state.db, reminders: state.db.reminders.filter(r => r.id !== btn.dataset.delete) })));
 }

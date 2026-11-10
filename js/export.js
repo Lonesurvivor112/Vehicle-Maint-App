@@ -21,14 +21,17 @@ function exportVehicleJson() {
 function exportCsv() {
   const vehicle = selectedVehicle();
   if (!vehicle) return alert("No vehicle selected.");
-  const rows = getScopedData(vehicle.id).maintenance.map(m => ({ vehicle: vehicle.name, date: m.date, mileage: m.mileage, category: m.category, title: m.title, provider: m.provider, amountPaid: m.cost, totalCost: m.totalCost, coveredBy: m.coveredBy, notes: m.notes, nextDueMileage: m.nextDueMileage, nextDueDate: m.nextDueDate }));
+  const rows = getScopedData(vehicle.id).maintenance.map(m => ({ vehicle: vehicle.name, date: m.date, mileage: m.mileage, category: m.category, title: m.title, provider: m.provider, amountPaid: m.cost, totalCost: m.totalCost, coveredBy: m.coveredBy, notes: m.notes, nextDueMileage: m.nextDueMileage, nextDueDate: m.nextDueDate, attachments: state.db.documents.filter(d => (m.documentIds || []).includes(d.id)).map(d => d.title).join("; ") }));
   downloadText(`vehiclevault-maintenance-${safeName(vehicle.name)}-${todayIso()}.csv`, toCsv(rows), "text/csv");
 }
 
 async function importJson(root) {
   const file = root.querySelector("#importFile").files[0];
   if (!file) return alert("Choose a JSON file first.");
-  const parsed = JSON.parse(await file.text());
+  let parsed;
+  try { parsed = JSON.parse(await file.text()); } catch { return alert("That file isn't valid JSON."); }
+  if (!parsed || !Array.isArray(parsed.vehicles)) return alert("That file doesn't look like a VehicleVault backup.");
+  if (!confirm("Replace all data on this device (and in the cloud, if connected) with this backup?")) return;
   replaceDatabase(parsed);
 }
 

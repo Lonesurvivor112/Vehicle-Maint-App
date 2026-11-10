@@ -1,4 +1,4 @@
-import { loadDb, saveDb, resetDb, setDb } from "./storage.js";
+import { loadDb, saveDb, resetDb, setDb, storeRemoteDb } from "./storage.js";
 import { initDashboard } from "./dashboard.js";
 import { initVehiclesView } from "./vehicles.js";
 import { initMaintenanceView } from "./maintenance.js";
@@ -6,13 +6,16 @@ import { initRemindersView } from "./reminders.js";
 import { initExpensesView } from "./expenses.js";
 import { initDocumentsView } from "./documents.js";
 import { initExportView } from "./export.js";
-import { initSyncView } from "./github-sync.js";
+import { initSyncView, initCloudSync, scheduleCloudWrite } from "./github-sync.js";
 
 export const state = {
-  db: loadDb(),
+  db: await loadDb(),
   selectedVehicleId: null,
   currentView: "dashboard",
   syncStatus: "Local only",
+  // True while the user has unsaved edits in a form, so a background cloud
+  // pull doesn't re-render and wipe what they are typing.
+  formDirty: false,
 };
 
 state.selectedVehicleId = state.db.vehicles[0]?.id || null;
@@ -69,12 +72,23 @@ export function commit(nextDb) {
   if (!state.selectedVehicleId || !state.db.vehicles.some(v => v.id === state.selectedVehicleId)) {
     state.selectedVehicleId = state.db.vehicles[0]?.id || null;
   }
+  scheduleCloudWrite();
   render();
 }
 
 export function replaceDatabase(nextDb) {
   state.db = setDb(nextDb);
   state.selectedVehicleId = state.db.vehicles[0]?.id || null;
+  scheduleCloudWrite();
+  render();
+}
+
+/* Apply a newer copy pulled from the cloud without re-stamping or re-pushing it. */
+export function applyRemoteDatabase(remoteDb) {
+  state.db = storeRemoteDb(remoteDb);
+  if (!state.db.vehicles.some(v => v.id === state.selectedVehicleId)) {
+    state.selectedVehicleId = state.db.vehicles[0]?.id || null;
+  }
   render();
 }
 
@@ -115,9 +129,10 @@ export function render() {
   renderVehicleSelect();
   const view = views[state.currentView] || views.dashboard;
   viewTitle.textContent = view.title;
-  updatedPill.textContent = `Updated: ${new Date(state.db.updatedAt).toLocaleString()}`;
+  updatedPill.textContent = `Updated: ${state.db.updatedAt ? new Date(state.db.updatedAt).toLocaleString() : "never"}`;
   syncPill.textContent = state.syncStatus;
   viewRoot.innerHTML = "";
+  state.formDirty = false;
   view.init(viewRoot);
   navButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.view === state.currentView));
 }
@@ -125,6 +140,10 @@ export function render() {
 vehicleSelect.addEventListener("change", (event) => {
   state.selectedVehicleId = event.target.value;
   render();
+});
+
+viewRoot.addEventListener("input", (event) => {
+  if (event.target.closest("form") && !event.target.closest("#syncForm")) state.formDirty = true;
 });
 
 navButtons.forEach(btn => {
@@ -135,8 +154,12 @@ navButtons.forEach(btn => {
 });
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(console.warn));
+  // The awaited DB load above can finish after the page's load event, so
+  // register right away in that case instead of waiting for an event that passed.
+  const registerSw = () => navigator.serviceWorker.register("sw.js").catch(console.warn);
+  if (document.readyState === "complete") registerSw(); else window.addEventListener("load", registerSw);
 }
 
 window.VehicleVault = { state, commit, resetDb };
 render();
+initCloudSync();
